@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>UI 预览：心形与气泡卡片</title>
+  <link rel="stylesheet" href="contentStyles.css"/>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", sans-serif; margin: 24px; }
+    .demo-row { display: flex; gap: 32px; align-items: flex-start; }
+    .demo-box { border: 1px dashed #cfe9da; padding: 16px; border-radius: 12px; }
+    .cta-tooltip { position: relative; }
+  </style>
+</head>
+<body>
+  <h2>UI 预览</h2>
+  <p>此页面用于预览最近的 UI 改动（放大心形、烟花特效、气泡卡语言下拉和 usage 显示）。</p>
+
+  <div class="demo-row">
+    <div class="demo-box">
+      <h3>心形与烟花</h3>
+      <div class="cta-heart-overlay" style="position:relative;width:80px;height:80px;">
+        <button class="cta-heart" aria-label="Translate">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="#34c38f" aria-hidden="true">
+            <path d="M12 21s-6.716-4.529-9.354-7.167C-1.085 12.272.21 7.678 4.09 6.315c2.42-.85 4.68.258 5.91 2.043C11.23 6.573 13.49 5.465 15.91 6.315c3.88 1.363 5.175 5.957 1.444 7.518C18.716 16.471 12 21 12 21z"></path>
+          </svg>
+        </button>
+      </div>
+      <p><small>点击心形触发烟花预览。</small></p>
+    </div>
+
+    <div class="demo-box" style="min-width:360px;">
+      <h3>气泡卡（含语言下拉与 usage）</h3>
+      <div class="cta-tooltip">
+        <div class="cta-tooltip-inner">
+          <div class="cta-tooltip-header">
+            <span class="cta-status">翻译结果</span>
+            <select class="cta-lang-select">
+              <option value="zh-CN">简体中文</option>
+              <option value="zh-TW">繁体中文</option>
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+              <option value="es">Español</option>
+            </select>
+            <button class="cta-close" aria-label="关闭">×</button>
+          </div>
+          <div class="cta-tooltip-body">
+            <div class="cta-title">Hello world</div>
+            <div class="cta-translation">你好，世界</div>
+            <div class="cta-meaning">在计算机编程中常用于测试或演示的示例文本。</div>
+          </div>
+          <div class="cta-tooltip-footer">
+            <div class="cta-usage">tokens: prompt 120, completion 80 · cost: $0.0005 USD</div>
+            <button class="cta-copy">复制</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 预览：点击心形生成烟花
+    const overlay = document.querySelector('.cta-heart-overlay');
+    const heart = overlay.querySelector('.cta-heart');
+    heart.addEventListener('click', () => {
+      const container = document.createElement('div');
+      container.className = 'cta-fireworks';
+      overlay.appendChild(container);
+      for (let i = 0; i < 16; i++) {
+        const p = document.createElement('span');
+        p.className = 'spark';
+        p.style.left = `${10 + (Math.random() * 20 - 10)}px`;
+        p.style.top = `${10 + (Math.random() * 20 - 10)}px`;
+        p.style.animationDelay = `${Math.random() * 0.3}s`;
+        const dx = (Math.random() - 0.5) * 32;
+        const dy = -10 - Math.random() * 20;
+        p.style.setProperty('--dx', `${dx}px`);
+        p.style.setProperty('--dy', `${dy}px`);
+        container.appendChild(p);
+      }
+      setTimeout(() => container.remove(), 1600);
+    });
+
+    // 预览：复制按钮
+    document.querySelector('.cta-copy').addEventListener('click', () => {
+      const text = document.querySelector('.cta-translation').textContent;
+      navigator.clipboard.writeText(text);
+      alert('已复制翻译文本');
+    });
+  </script>
+</body>
+</html>

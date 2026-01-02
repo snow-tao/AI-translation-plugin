@@ -1,0 +1,40 @@
+{
+  "name": "AI-trans",
+  "version": "0.1.0",
+  "manifest_version": 3,
+  "description": "Select text to translate and infer meaning in context using Deepseek. Hover/click the heart icon for quick access.",
+  "icons": {
+    "16": "icons/柴犬.svg",
+    "48": "icons/柴犬.svg",
+    "128": "icons/柴犬.svg"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "options.html",
+  "permissions": ["storage", "scripting", "tabs"],
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["contentScript.js"],
+      "css": ["contentStyles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "commands": {
+    "trigger-translate": {
+      "suggested_key": {
+        "default": "Alt+T"
+      },
+      "description": "Trigger translation on current selection"
+    }
+  }
+}
