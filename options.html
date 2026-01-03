@@ -1,63 +1,96 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Context Translate 设置</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>翻译插件设置</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Noto Sans CJK', 'Microsoft YaHei', sans-serif; background:#f7f7f8; margin:0; }
-    .container { max-width: 680px; margin: 24px auto; background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.08); padding:20px; }
-    h1 { font-size: 18px; }
-    .field { margin: 12px 0; }
-    .label { display:block; font-size: 13px; color:#374151; margin-bottom:6px; }
-    select, input[type=number] { width: 240px; padding:6px 8px; border-radius:8px; border:1px solid #e5e7eb; }
-    .radio-group { display:flex; gap: 12px; }
-    .actions { margin-top: 16px; }
-    button { background:#22c55e; color:white; border:none; border-radius:8px; padding:8px 14px; cursor:pointer; }
-    .desc { font-size:12px; color:#6b7280; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif; margin: 0; padding: 24px; background: #f7f7f8; color: #333; }
+    h1 { font-size: 20px; margin: 0 0 16px; }
+    h2 { font-size: 16px; margin: 24px 0 12px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 16px; }
+    .row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+    label { width: 160px; font-weight: 600; }
+    input[type="text"], input[type="password"], textarea, select { flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+    textarea { min-height: 100px; }
+    .actions { display: flex; gap: 10px; }
+    button { padding: 8px 12px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
+    .primary { background: #4f46e5; color: #fff; }
+    .secondary { background: #e5e7eb; color: #111827; }
+    .danger { background: #ef4444; color: #fff; }
+    .note { font-size: 12px; color: #6b7280; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Context Translate 设置</h1>
+  <h1>翻译插件设置</h1>
 
-    <div class="field">
-      <label class="label">目标语言</label>
+  <div class="card">
+    <h2>通用设置</h2>
+    <div class="row">
+      <label for="targetLanguage">目标语言</label>
       <select id="targetLanguage">
         <option value="zh-CN">简体中文</option>
         <option value="zh-TW">繁体中文</option>
         <option value="en">English</option>
         <option value="ja">日本語</option>
-        <option value="es">Español</option>
+        <option value="ko">한국어</option>
       </select>
-      <div class="desc">选择翻译与语境解释的目标语言（默认：简体中文）。</div>
     </div>
-
-    <div class="field">
-      <label class="label">上下文长度（每侧字符数）</label>
-      <input id="contextLength" type="number" min="10" max="100" step="2" />
-      <div class="desc">用于推测语境的前后字符数。建议 30，兼顾准确与 token 消耗。</div>
+    <div class="row">
+      <label for="triggerMode">触发方式</label>
+      <select id="triggerMode">
+        <option value="hover">悬停</option>
+        <option value="click">点击</option>
+      </select>
     </div>
-
-    <div class="field">
-      <label class="label">触发方式</label>
-      <div class="radio-group">
-        <label><input type="radio" name="triggerMode" value="hover" /> 悬停</label>
-        <label><input type="radio" name="triggerMode" value="click" /> 点击</label>
-      </div>
-      <div class="desc">默认悬停触发，也支持点击触发。</div>
+    <div class="row">
+      <label for="contextLength">上下文字符数</label>
+      <input id="contextLength" type="text" placeholder="默认 30" />
     </div>
-
-    <div class="field">
-      <label class="label">快捷键</label>
-      <div class="desc">已定义：Alt + T 可触发当前选区翻译。</div>
+    <div class="row">
+      <label for="domain">领域</label>
+      <input id="domain" type="text" placeholder="如: 软件工程、金融、法律" />
     </div>
-
+    <div class="row">
+      <label for="glossary">术语表(JSON)</label>
+      <textarea id="glossary" placeholder='如: [{"src":"LLM","tgt":"大语言模型"}]'></textarea>
+    </div>
     <div class="actions">
-      <button id="saveBtn">保存设置</button>
+      <button id="saveGeneral" class="primary">保存通用设置</button>
     </div>
+  </div>
 
-    <p class="desc" style="margin-top:12px;">注意：Deepseek 的域名、模型、API Key 通过 env.json 配置，不在此页面设置。</p>
+  <div class="card">
+    <h2>LLM 提供商配置</h2>
+    <div class="row">
+      <label for="llmProvider">提供商</label>
+      <select id="llmProvider">
+        <option value="deepseek">DeepSeek</option>
+        <option value="openai">OpenAI</option>
+        <option value="openrouter">OpenRouter</option>
+        <option value="together">Together AI</option>
+        <option value="groq">Groq</option>
+        <option value="custom">自定义</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="llmBaseUrl">Base URL</label>
+      <input id="llmBaseUrl" type="text" placeholder="如: https://api.deepseek.com" />
+    </div>
+    <div class="row">
+      <label for="llmModel">Model</label>
+      <input id="llmModel" type="text" placeholder="如: deepseek-chat / gpt-4o / mixtral-8x7b-instruct" />
+    </div>
+    <div class="row">
+      <label for="llmApiKey">API Key</label>
+      <input id="llmApiKey" type="password" placeholder="请输入密钥" />
+    </div>
+    <div class="actions">
+      <button id="saveLLM" class="primary">保存提供商设置</button>
+      <button id="testLLM" class="secondary">测试连接</button>
+      <button id="clearLLM" class="danger">清除密钥</button>
+    </div>
+    <p class="note">密钥仅保存在本地（storage.local），不会同步或上传。调用在后台脚本进行，网页无法直接读取密钥。</p>
   </div>
 
   <script src="options.js"></script>

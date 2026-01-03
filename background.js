@@ -3,7 +3,9 @@
 const DEFAULT_CONFIG = {
   targetLanguage: 'zh-CN',
   triggerMode: 'hover', // 'hover' | 'click'
-  contextLength: 30 // 前后各30字符，兼顾准确与token消耗
+  contextLength: 30, // 前后各30字符，兼顾准确与token消耗
+  domain: '',
+  glossary: []
 };
 
 async function getStoredConfig() {
@@ -12,45 +14,46 @@ async function getStoredConfig() {
   });
 }
 
-async function getEnv() {
-  try {
-    const url = chrome.runtime.getURL('env.json');
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('ENV_NOT_FOUND');
-    const json = await res.json();
-    return json; // { DEEPSEEK_API_BASE, DEEPSEEK_MODEL, DEEPSEEK_API_KEY }
-  } catch (e) {
-    return null;
-  }
+async function getLLMConfig() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get({ llmProvider: 'deepseek', llmBaseUrl: 'https://api.deepseek.com', llmModel: 'deepseek-chat', llmApiKey: '', PRICE_PROMPT_PER_1K: '0', PRICE_COMPLETION_PER_1K: '0', CURRENCY: 'USD' }, (items) => resolve(items));
+  });
 }
 
-function buildPrompt({ selection, pre, post, targetLanguage }) {
-  const instructions = `你是一个专业的双语语境分析助手。仅根据下面以严格XML标签包裹的内容进行判断与翻译。\n- 若选中内容为句子或包含多个子句，请完整翻译“选中内容”的全部文本，不得省略任何部分；\n- 若选中内容为词或短语，请给出语境下更自然的译法，并补充直译以供参考；\n请识别是否为习语/隐喻/军事术语等，并优先返回符合语境的译法。严格输出 JSON（仅 JSON，无额外文本）：{\n  "full_translation": 对选中内容（若为句子/多子句）进行完整且忠实的${targetLanguage}翻译（不得缺漏、不得只翻译其中一部分）,\n  "contextual_translation": 在当前语境下更自然且符合真实用法的${targetLanguage}译法（词/短语时优先显示；若与full相同可重复）,\n  "literal_translation": 若存在直译，请给出直译（如不适用可为空字符串）,\n  "meaning_in_context": 简明解释其在当前语境中的含义/用法,\n  "part_of_speech_or_type": 词性或短语类型（如习语/比喻/军事术语等，可选）,\n  "tone_or_register": 语气或语域（如正式/口语/新闻等，可选）,\n  "example_in_cn": 一个简短中文例句（如目标语言不是中文，可选）,\n  "flags": { "is_idiom": 布尔值, "is_metaphorical": 布尔值 },\n  "confidence": 0-1 的语境判断信心（可选）\n}`;
-  const content = [
-    '<task>',
-    `<target_language>${targetLanguage}</target_language>`,
-    '<selection><![CDATA[', selection, ']]></selection>',
-    '<context>',
-    '<pre><![CDATA[', pre, ']]></pre>',
-    '<post><![CDATA[', post, ']]></post>',
-    '</context>',
-    '</task>'
-  ].join('');
+function buildPrompt({ selection, pre, post, targetLanguage, domain, glossary }) {
+  const domainHint = domain ? `领域:${domain}` : '';
+  const glossaryHint = Array.isArray(glossary) && glossary.length
+    ? `术语:${glossary.map((g) => `${g.src}=>${g.tgt}`).join(';')}`
+    : '';
+  const hints = [domainHint, glossaryHint].filter(Boolean);
+  const wordCount = selection.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const isWordOrPhrase = wordCount <= 5;
+  const pronunciationHint = isWordOrPhrase ? ';词/短语(≤5词)需提供音标/读音' : '';
+  const instructions = `双语语境翻译助手。输出JSON:\n{\n"full_translation":"完整${targetLanguage}翻译(句子必完整)",\n"contextual_translation":"语境译法(词/短语优先)",\n"literal_translation":"直译",\n"pronunciation":"音标/读音(词/短语≤5词时必填,使用IPA或拼音)",\n"meaning_in_context":"语境含义",\n"part_of_speech_or_type":"词性/类型",\n"tone_or_register":"语气",\n"example_in_cn":"例句",\n"flags":{"is_idiom":false,"is_metaphorical":false},\n"confidence":0.9\n}\n规则:句子完整翻译;词/短语优先语境译;识别习语/隐喻${pronunciationHint}${hints.length ? ';' + hints.join(';') : ''}`;
+  const parts = [
+    `T:${targetLanguage}`,
+    domain ? `D:${domain}` : '',
+    (Array.isArray(glossary) && glossary.length) ? `G:${JSON.stringify(glossary)}` : '',
+    `S:${selection}`,
+    pre || post ? `C:${pre ? `P:${pre}` : ''}${pre && post ? '|' : ''}${post ? `N:${post}` : ''}` : ''
+  ].filter(Boolean);
+  const content = parts.join('\n');
   return { instructions, content };
 }
 
-async function callDeepseek({ selection, pre, post, targetLanguage }) {
-  const env = await getEnv();
-  if (!env || !env.DEEPSEEK_API_BASE || !env.DEEPSEEK_MODEL || !env.DEEPSEEK_API_KEY) {
-    return { error: '未配置或缺少 env.json（DEEPSEEK_API_BASE / MODEL / API_KEY）' };
+async function callLLM({ selection, pre, post, targetLanguage, domain, glossary }) {
+  const env = await getLLMConfig();
+  const baseUrl = (env.llmBaseUrl || '').replace(/\/$/, '');
+  const model = env.llmModel;
+  const apiKey = env.llmApiKey;
+  if (!baseUrl || !model || !apiKey) {
+    return { error: '未在设置页配置 Base URL / Model / API Key' };
   }
 
-  const { instructions, content } = buildPrompt({ selection, pre, post, targetLanguage });
-
-  const url = `${env.DEEPSEEK_API_BASE.replace(/\/$/, '')}/v1/chat/completions`;
-
+  const { instructions, content } = buildPrompt({ selection, pre, post, targetLanguage, domain, glossary });
+  const url = `${baseUrl}/v1/chat/completions`;
   const body = {
-    model: env.DEEPSEEK_MODEL,
+    model,
     temperature: 0.2,
     messages: [
       { role: 'system', content: instructions },
@@ -60,27 +63,32 @@ async function callDeepseek({ selection, pre, post, targetLanguage }) {
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
+  const startTime = Date.now();
 
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.DEEPSEEK_API_KEY}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(body),
       signal: controller.signal
     });
 
     clearTimeout(timeout);
-
     if (!res.ok) {
       const text = await res.text();
       return { error: `接口错误: ${res.status} ${text}` };
     }
-
     const data = await res.json();
+    if (data.error) {
+      return { error: `API错误: ${data.error.message || JSON.stringify(data.error)}` };
+    }
     const contentText = data?.choices?.[0]?.message?.content || data?.choices?.[0]?.delta?.content || '';
+    if (!contentText || contentText.trim() === '') {
+      return { error: 'API返回空内容，请检查API配置和网络连接' };
+    }
 
     let parsed;
     try {
@@ -91,7 +99,7 @@ async function callDeepseek({ selection, pre, post, targetLanguage }) {
       parsed = { translation: contentText, meaning_in_context: contentText };
     }
 
-    const usage = data?.usage || null; // 兼容常见响应的usage结构
+    const usage = data?.usage || null;
     let cost = null;
     const promptPrice = parseFloat(env.PRICE_PROMPT_PER_1K);
     const completionPrice = parseFloat(env.PRICE_COMPLETION_PER_1K);
@@ -100,8 +108,8 @@ async function callDeepseek({ selection, pre, post, targetLanguage }) {
       const c = usage.completion_tokens || 0;
       cost = Number(((p / 1000) * promptPrice + (c / 1000) * completionPrice).toFixed(6));
     }
-
-    return { data: parsed, usage, cost, currency: env.CURRENCY || 'USD' };
+    const translationTime = Date.now() - startTime;
+    return { data: parsed, usage, cost, currency: env.CURRENCY || 'USD', translationTime };
   } catch (e) {
     clearTimeout(timeout);
     if (e.name === 'AbortError') return { error: '请求超时' };
@@ -110,28 +118,44 @@ async function callDeepseek({ selection, pre, post, targetLanguage }) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  let responded = false;
+  const safeSendResponse = (response) => {
+    if (!responded) {
+      responded = true;
+      try { sendResponse(response); } catch (e) { console.error('sendResponse error:', e); }
+    }
+  };
+
   (async () => {
-    if (msg?.type === 'TRANSLATE') {
-      const cfg = await getStoredConfig();
-      const targetLanguage = msg.targetLanguage || cfg.targetLanguage || DEFAULT_CONFIG.targetLanguage;
-      const result = await callDeepseek({
-        selection: msg.selection,
-        pre: msg.pre,
-        post: msg.post,
-        targetLanguage
-      });
-      sendResponse(result);
-    } else if (msg?.type === 'GET_CONFIG') {
-      const cfg = await getStoredConfig();
-      sendResponse(cfg);
-    } else if (msg?.type === 'PING') {
-      sendResponse({ ok: true });
+    try {
+      if (msg?.type === 'TRANSLATE') {
+        const cfg = await getStoredConfig();
+        const targetLanguage = msg.targetLanguage || cfg.targetLanguage || DEFAULT_CONFIG.targetLanguage;
+        const result = await callLLM({
+          selection: msg.selection,
+          pre: msg.pre,
+          post: msg.post,
+          targetLanguage,
+          domain: msg.domain || cfg.domain || '',
+          glossary: msg.glossary || cfg.glossary || []
+        });
+        safeSendResponse(result);
+      } else if (msg?.type === 'GET_CONFIG') {
+        const cfg = await getStoredConfig();
+        safeSendResponse(cfg);
+      } else if (msg?.type === 'PING') {
+        safeSendResponse({ ok: true });
+      } else {
+        safeSendResponse({ error: '未知的消息类型' });
+      }
+    } catch (error) {
+      console.error('Background error:', error);
+      safeSendResponse({ error: `后台错误: ${error.message || String(error)}` });
     }
   })();
-  return true; // 异步响应
+  return true;
 });
 
-// 处理快捷键 Alt+T
 chrome.commands?.onCommand.addListener(async (command) => {
   if (command === 'trigger-translate') {
     try {
@@ -139,8 +163,6 @@ chrome.commands?.onCommand.addListener(async (command) => {
       if (tab?.id) {
         chrome.tabs.sendMessage(tab.id, { type: 'TRIGGER_SHORTCUT' });
       }
-    } catch (e) {
-      // 静默失败
-    }
+    } catch (e) {}
   }
 });

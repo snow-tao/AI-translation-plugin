@@ -37,6 +37,20 @@
   align-items: center;
   gap: 8px;
 }
+/* 左侧拖拽手柄：仅在该区域允许拖拽 */
+.cta-drag-handle {
+  flex: 0 0 84px;
+  height: 20px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 12px;
+  cursor: grab;
+  user-select: none;
+  background: rgba(0,0,0,0.04);
+}
 .cta-tooltip-header .cta-lang-select {
   margin-left: auto; /* 右侧对齐 */
   background: #e6f7ed;
@@ -45,6 +59,15 @@
   border-radius: 6px;
   padding: 4px 6px;
   font-size: 12px;
+}
+.cta-tooltip-header .cta-domain-select {
+  margin-left: 8px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: #fff;
+  padding: 0 8px;
+  font-size: 13px;
 }
 .cta-tooltip-footer {
   display: flex;
@@ -89,8 +112,13 @@
   min-width: 240px;
   max-width: 420px;
   display: none;
-  cursor: move; /* 提示用户可拖动 */
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
+.cta-tooltip.visible { opacity: 1; transform: scale(1); }
+.cta-tooltip.dragging .cta-tooltip-inner { box-shadow: 0 10px 28px rgba(0,0,0,0.26); }
+
 .cta-tooltip-inner {
   background: #fff;
   color: #111;
@@ -126,6 +154,14 @@
 }
 .cta-usage { font-size: 12px; color: #6b7280; }
 
+/* 徽章 */
+.badges { display:flex; gap:6px; flex-wrap:wrap; margin: 4px 0 8px; }
+.badge { font-size: 11px; padding: 2px 6px; border-radius: 999px; background:#f3f4f6; color:#374151; border:1px solid #e5e7eb; }
+.badge-idiom { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
+.badge-metaphor { background:#e0e7ff; color:#1e3a8a; border-color:#c7d2fe; }
+.badge-pos { background:#ecfeff; color:#0e7490; border-color:#cffafe; }
+.badge-tone { background:#fef3c7; color:#92400e; border-color:#fde68a; }
+
 /* Loading */
 .spinner {
   display: inline-block;
@@ -138,8 +174,26 @@
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.row { display: grid; grid-template-columns: 72px 1fr; gap: 8px; margin: 6px 0; }
+.row { display: grid; grid-template-columns: 84px 1fr; gap: 8px; margin: 6px 0; }
 .label { color: #4b5563; }
 .val { color: #111827; }
 .cta-error { color: #dc2626; }
 .cta-tooltip.grabbing { cursor: grabbing; }
+
+/* 暗黑模式适配 */
+@media (prefers-color-scheme: dark) {
+  .cta-tooltip-inner { background:#0f172a; color:#e5e7eb; border-color: rgba(255,255,255,0.08); box-shadow: 0 8px 24px rgba(0,0,0,0.55); }
+  .cta-tooltip-header { background: rgba(34, 197, 94, 0.12); }
+  .cta-lang-select { background:#0b1220; color:#e5e7eb; border-color:#1f2937; }
+  .cta-domain-select { background:#0b1220; color:#e5e7eb; border-color:#1f2937; }
+  .label { color:#9ca3af; }
+  .val { color:#e5e7eb; }
+  .cta-tooltip-footer { border-top-color: rgba(255,255,255,0.08); }
+  .badge { background:#1f2937; color:#e5e7eb; border-color:#374151; }
+  .badge-idiom { background:#7f1d1d; color:#fecaca; border-color:#991b1b; }
+  .badge-metaphor { background:#1e40af; color:#c7d2fe; border-color:#1d4ed8; }
+  .badge-pos { background:#083344; color:#a5f3fc; border-color:#164e63; }
+  .badge-tone { background:#78350f; color:#fde68a; border-color:#92400e; }
+  .cta-tooltip-footer { border-top-color: rgba(255,255,255,0.08); }
+  .cta-copy { background:#22c55e; color:#0b1220; }
+}
