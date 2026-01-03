@@ -13,14 +13,13 @@ AI-trans is a browser extension powered by a configurable LLM translation servic
 ```
 ├── README.md
 ├── README_EN.md          # English README (this file)
-├── background.js         # Service Worker: unified LLM calls, error handling, retries
+├── background.js         # Service Worker: unified LLM calls, error handling, retries; reads provider config from storage.local
 ├── contentScript.js      # Content script: selection handling, Shiba icon, result bubble & interactions
 ├── contentStyles.css     # Styles: result bubble, header, interaction states (drag, close, etc.)
-├── env.json              # Local development example (do not store secrets)
-├── icons/                # Extension and overlay icons (includes 柴犬.svg)
-├── manifest.json         # Manifest V3 (name, permissions, icons)
-├── options.html          # Options page: configure API Key, target language, trigger mode, etc.
-├── options.js            # Options page logic
+├── icons/                # Extension and overlay icons
+├── manifest.json         # Manifest V3 (name, permissions, icons, options page entry)
+├── options.html          # Options page: configure LLM provider (Base URL, Model, API Key), target language, trigger mode, etc.
+├── options.js            # Options page logic: sync/local storage, connection test (/v1/models)
 └── preview.html          # Local preview page for UI card layout and interactions
 ```
 
@@ -44,17 +43,24 @@ AI-trans is a browser extension powered by a configurable LLM translation servic
   - Use the language dropdown to switch target language
   - Click outside the bubble or the X button to close
 
-## Configuration
-- In the Options page (options.html), configure:
-  - API Key and endpoint for your translation service (e.g., DeepSeek-compatible)
-  - Target language, trigger mode (hover/click), context window length
-- Security recommendations:
-  - Keep API Key in local browser storage (chrome.storage); never commit secrets
-  - `env.json` is for local examples only; do not store real keys here
+## LLM Provider Configuration
+- Options page supports common OpenAI-compatible providers: DeepSeek, OpenAI, OpenRouter, Together AI, Groq, and Custom
+- Default Base URL and example Model are auto-filled and can be customized
+- After saving, the background script reads config from `chrome.storage.local` and uses the unified `/v1/chat/completions`
+- Click "Test Connection" to call `/v1/models` and quickly validate your Base URL and API Key settings
 
-## Permissions & Security
+## Configuration & Security
+- In the Options page (options.html), configure:
+  - LLM provider Base URL, Model, and API Key (stored locally, not synced)
+  - Target language, trigger mode (hover/click), context window length, etc.
+- Security recommendations:
+  - Store API Key only in local browser storage (`chrome.storage.local`); never commit secrets
+  - Do not rely on `env.json` for secrets; if you keep a local example, never put real keys
+  - Minimize host permissions to actual domains in use
+
+## Permissions & Privacy
 - Minimal MV3 permissions: `storage`, `activeTab`, `scripting`
-- `host_permissions`: only the translation endpoint domains you intend to use
+- `host_permissions`: only the translation endpoint domains you intend to use (wildcards may be allowed for testing)
 - Privacy & security:
   - Only send the necessary selection text and a small context window
   - Do not record or upload sensitive page data
@@ -66,8 +72,8 @@ AI-trans is a browser extension powered by a configurable LLM translation servic
   - Collects selected text and context, renders the result bubble and interactions
 - background:
   - Builds a structured prompt with selection and safe-wrapped context
-  - Calls the translation service and returns structured results (full/contextual/literal/semantic)
-  - Handles errors and retries centrally
+  - Calls the LLM translation service and returns structured results (full/contextual/literal/semantic)
+  - Centralized error handling and retry strategy
 
 ## Local UI Preview
 - Start a local server:
@@ -78,9 +84,9 @@ AI-trans is a browser extension powered by a configurable LLM translation servic
 ## Packaging & Publishing
 - Use as an unpacked extension or package a ZIP for store submission
 - Pre-publish checklist:
-  - Manifest name and icons (this project uses "AI-trans" with `icons/柴犬.svg`)
+  - Manifest name and icons (this project uses "AI-trans" with `icons/哈士奇.png`)
   - Minimal permissions and privacy notice
-  - Options page for user API Key (no bundled secrets)
+  - Options page guiding users to configure API Key (no bundled secrets)
 
 ## Roadmap
 - ESC key to close bubble
