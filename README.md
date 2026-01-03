@@ -12,14 +12,14 @@ AI-trans 是一个基于可配置 LLM 翻译服务的浏览器扩展，支持对
 ## 目录结构
 ```
 ├── README.md
-├── background.js         # Service Worker：统一请求 LLM 服务、错误与重试
+├── README_EN.md
+├── background.js         # Service Worker：统一请求 LLM 服务、错误与重试；从 storage.local 读取提供商配置
 ├── contentScript.js      # 内容脚本：选区监听、心形/柴犬图标、结果气泡渲染与交互
 ├── contentStyles.css     # UI 样式：结果气泡、标题栏、交互态（拖拽、关闭等）
-├── env.json              # 本地开发示例文件（不要存放密钥）
-├── icons/                # 扩展与浮层图标（包含 柴犬.svg）
-├── manifest.json         # Manifest V3 配置（名称、权限、图标等）
-├── options.html          # 选项页：配置 API Key、目标语言、触发方式等
-├── options.js            # 选项页逻辑
+├── icons/                # 扩展与浮层图标
+├── manifest.json         # Manifest V3 配置（名称、权限、图标、options 入口）
+├── options.html          # 选项页：配置 LLM 提供商（Base URL、Model、API Key）、目标语言、触发方式等
+├── options.js            # 选项页逻辑：同步/本地存储、测试连接（/v1/models）
 └── preview.html          # 开发预览页面：用于本地预览结果卡片样式
 ```
 
@@ -43,17 +43,24 @@ AI-trans 是一个基于可配置 LLM 翻译服务的浏览器扩展，支持对
   - 使用语言下拉切换目标语言
   - 点击外部区域或右上角 X 可关闭气泡
 
-## 配置
+## LLM 提供商配置
+- 选项页支持常见 OpenAI 兼容接口的提供商：DeepSeek、OpenAI、OpenRouter、Together AI、Groq，以及自定义
+- 默认 Base URL 与示例 Model 会自动填充，可自行修改
+- 保存后后台脚本从 `chrome.storage.local` 读取配置并使用统一的 `/v1/chat/completions`
+- 可点击“测试连接”按钮调用 `/v1/models` 快速检测 Base URL 与 Key 配置是否正确
+
+## 配置与安全
 - 在扩展的「选项页」（options.html）中配置：
-  - LLM 翻译服务的 API Key 与接口地址（如 DeepSeek 或兼容服务）
+  - LLM 提供商的 Base URL、Model 与 API Key（仅本地保存，不同步）
   - 目标语言、触发方式（悬停/点击）、上下文窗口长度等
 - 安全建议：
-  - API Key 仅保存于浏览器本地（chrome.storage），不要提交到仓库
-  - `env.json` 仅用于本地开发示例，请勿写入真实密钥
+  - API Key 仅保存于浏览器本地（chrome.storage.local），不要提交到仓库
+  - 不再依赖 `env.json` 存放密钥；如需本地示例，请勿写入真实密钥
+  - Host 权限可收敛到实际使用的域名，遵循最小权限原则
 
-## 权限与安全
+## 权限与隐私
 - Manifest V3 最小权限：`storage`、`activeTab`、`scripting`
-- `host_permissions`：仅允许访问配置的翻译接口域名
+- `host_permissions`：仅允许访问配置的翻译接口域名（默认支持通配以便测试）
 - 隐私与安全：
   - 仅发送必要的选区与少量上下文
   - 不记录或上传页面的敏感信息
@@ -77,7 +84,7 @@ AI-trans 是一个基于可配置 LLM 翻译服务的浏览器扩展，支持对
 ## 打包与发布
 - 将项目作为解压扩展直接使用，或打包为 ZIP 上传到扩展商店（根据商店要求）
 - 发布前检查：
-  - manifest 中名称与图标（本项目已使用「AI-trans」与 `icons/柴犬.svg`）
+  - manifest 中名称与图标（本项目已使用「AI-trans」与 `icons/哈士奇.png`）
   - 权限最小化与隐私声明
   - 选项页引导用户配置 API Key（不内置密钥）
 
